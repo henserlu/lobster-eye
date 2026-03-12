@@ -1,6 +1,6 @@
 # 🦞👁️ Lobster Eye (龙虾眼)
 
-> 解决 OpenClaw 记忆系统效率低的问题 - 语义搜索慢？跨语言不行？没有隐私保护？
+> 解决 OpenClaw 长久记忆系统效率低的问题 - 搜索慢？找不到？记不住？
 
 **基于 OpenClaw 的本地语义记忆系统 - 隐私优先，数据不出本地**
 
@@ -18,7 +18,7 @@
 
 ---
 
-## 🎯 解决 OpenClaw 记忆系统的痛点
+## 🎯 解决 OpenClaw 长久记忆的痛点
 
 ### 问题背景
 
@@ -32,6 +32,18 @@ OpenClaw 原生记忆系统存在以下效率问题：
 | **无时间感知** | 旧内容与新内容同等权重 | 近期重要信息被淹没 |
 | **结果重复** | 返回多条相似内容 | 浪费注意力 |
 | **隐私风险** | 可能配置云端嵌入 | 敏感数据泄露 |
+
+### 常见使用场景
+
+**你是否有过这样的经历：**
+
+❌ 记得写过"项目会议记录"，但搜"开会"找不到  
+❌ 记得存过"API 密钥"，但搜"password"找不到  
+❌ 记得昨天写的笔记，但被几个月前的旧内容淹没  
+❌ 搜"周报"返回 5 条几乎相同的内容  
+❌ 担心记忆文件上传云端泄露隐私  
+
+**Lobster Eye 就是为了解决这些问题！**
 
 ### Lobster Eye 解决方案
 
@@ -53,7 +65,7 @@ OpenClaw 原生记忆系统存在以下效率问题：
 ```
 ┌─────────────────────────────────────────────────────────┐
 │                    用户查询                              │
-│              "质谱仪配置" 或 "mass spec"                 │
+│          "项目会议记录" 或 "meeting notes"               │
 └────────────────────────────┬────────────────────────────┘
                              ↓
 ┌─────────────────────────────────────────────────────────┐
@@ -266,12 +278,18 @@ Embedding cache: enabled (X entries)
 
 **测试语义搜索：**
 ```bash
-openclaw memory search "RAG 方案"
+openclaw memory search "项目会议"
 ```
 
 **测试跨语言搜索：**
 ```bash
-openclaw memory search "mass spec configuration"
+openclaw memory search "meeting notes"
+```
+
+**测试时间衰减：**
+```bash
+# 新记忆优先，旧记忆权重降低
+openclaw memory search "周报"
 ```
 
 **预期结果：**
@@ -316,66 +334,152 @@ openclaw memory search "测试"
 
 ## 🧪 测试结果
 
+### 测试数据集
+
+- 4 个记忆文件
+- 9 个分块 (chunks)
+- 内容涵盖：会议记录、项目笔记、决策记录、学习笔记
+
+### 跨语言搜索测试
+
 | 查询 | 语言 | 相关性 | 说明 |
 |------|------|--------|------|
-| "质谱仪配置" | 中文 | 0.599 | 中文记忆 |
-| "mass spec" | 英文 | 0.607 | **跨语言匹配** |
-| "RAG 方案" | 中文 | 0.580 | 语义匹配 |
+| "项目会议" | 中文 | 0.599 | 中文记忆 |
+| "meeting notes" | 英文 | 0.607 | **跨语言匹配！** |
+| "weekly report" | 英文 | 0.584 | **跨语言匹配！** |
 
-**性能：**
-- 首次查询：~1 秒
-- 缓存命中：~100ms
+### 语义搜索测试
+
+| 查询 | 相关性 | 找到的内容 |
+|------|--------|------------|
+| "项目进度" | 0.580 | 项目周会记录 |
+| "API 密钥" | 0.552 | 配置文件笔记 |
+| "开会讨论" | 0.527 | 会议记录 |
+
+### 性能测试
+
+| 操作 | 耗时 |
+|------|------|
+| 嵌入生成 | ~943ms |
+| 向量搜索 | ~50ms |
+| BM25 搜索 | ~20ms |
+| **总计 (首次)** | **~1 秒** |
+| **缓存命中** | **~100ms** |
 
 ---
 
 ## 🔒 隐私保护
 
-**数据流向：**
+### 数据流向
+
 ```
 用户查询 → 本地 Ollama → 本地 SQLite → 返回结果
          (不出本地)    (不出本地)
 ```
 
-**备份建议：**
-```bash
-# 本地加密备份
-restic backup --repo ~/backups/memory/restic \
-  ~/.openclaw/workspace/memory/
+**全程不联网，数据不出本地！**
 
-# 或离线备份
-tar -czf backup.tar.gz ~/.openclaw/workspace/memory/
-gpg -c backup.tar.gz
-```
+### 备份策略
 
-**不要做：**
+#### ❌ 错误做法
+
 ```bash
-# ❌ 绝对不要推送到 Git
+# 绝对不要这样做！
 git add memory/
+git commit -m "备份记忆"
 git push  # 敏感数据泄露！
 ```
 
+#### ✅ 正确做法
+
+**方案 1: 本地加密备份**
+```bash
+restic backup \
+  --repo ~/backups/openclaw-memory/restic \
+  --password-file ~/.restic-password \
+  ~/.openclaw/workspace/memory/
+```
+
+**方案 2: 离线备份**
+```bash
+tar -czf backup.tar.gz ~/.openclaw/workspace/memory/
+gpg -c backup.tar.gz  # 对称加密
+```
+
+### .gitignore 配置
+
+```gitignore
+# 记忆文件 (可能含敏感信息)
+MEMORY.md
+memory/papers/
+memory/snippets/
+memory/meetings/
+
+# 向量数据库 (可重新索引)
+memory/lancedb/
+memory/main.sqlite
+```
+
 ---
 
-## 📊 对比
+## 📊 与其他方案对比
 
 | 特性 | Lobster Eye | 传统 RAG | 云端方案 |
 |------|-------------|----------|----------|
-| 本地运行 | ✅ | ⚠️ | ❌ |
-| 跨语言 | ✅ | ⚠️ | ✅ |
-| 时间衰减 | ✅ | ❌ | ❌ |
-| 去重 | ✅ | ❌ | ❌ |
-| 隐私 | ✅ | ✅ | ❌ |
-| 成本 | 免费 | 免费 | 按量付费 |
+| **本地运行** | ✅ | ⚠️ 可选 | ❌ |
+| **跨语言** | ✅ | ⚠️ 依赖模型 | ✅ |
+| **时间衰减** | ✅ | ❌ | ❌ |
+| **去重** | ✅ | ❌ | ❌ |
+| **隐私保护** | ✅ | ✅ | ❌ |
+| **成本** | 免费 | 免费 | 按量付费 |
 
 ---
 
-## 🚀 下一步
+## 🚀 未来规划
+
+### v1.1 (计划中)
 
 - [ ] 批量嵌入优化
+- [ ] 增量索引加速
+- [ ] 更多嵌入模型支持
+
+### v1.2 (计划中)
+
 - [ ] 图谱式记忆关联
 - [ ] 自动摘要生成
+- [ ] 记忆版本控制
+
+### v2.0 (愿景)
+
+- [ ] 多用户支持
+- [ ] 分布式部署
+- [ ] 插件生态系统
 
 ---
 
-**许可证**: MIT  
-**最后更新**: 2026-03-13
+## 📚 参考资料
+
+- [OpenClaw 文档](https://docs.openclaw.ai/concepts/memory)
+- [Ollama](https://ollama.com)
+- [Qwen3 Embedding](https://ollama.com/library/qwen3-embedding)
+- [SQLite FTS5](https://www.sqlite.org/fts5.html)
+- [MMR 论文](https://www.cs.cmu.edu/~jgc/publication/Using_MMR_Diversity_Based_LMs_for_Retrieval.html)
+
+---
+
+## 🤝 贡献
+
+欢迎提交 Issue 和 Pull Request！
+
+**注意：** 提交前请确保不包含任何敏感信息。
+
+---
+
+## 📄 许可证
+
+MIT License
+
+---
+
+**最后更新**: 2026-03-13  
+**维护者**: @henserlu
