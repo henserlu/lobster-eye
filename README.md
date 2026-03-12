@@ -286,12 +286,6 @@ openclaw memory search "项目会议"
 openclaw memory search "meeting notes"
 ```
 
-**测试时间衰减：**
-```bash
-# 新记忆优先，旧记忆权重降低
-openclaw memory search "周报"
-```
-
 **预期结果：**
 - 返回相关记忆片段
 - 显示相关性分数 (0.5-0.8 为良好)
@@ -464,6 +458,16 @@ memory/main.sqlite
 - [Qwen3 Embedding](https://ollama.com/library/qwen3-embedding)
 - [SQLite FTS5](https://www.sqlite.org/fts5.html)
 - [MMR 论文](https://www.cs.cmu.edu/~jgc/publication/Using_MMR_Diversity_Based_LMs_for_Retrieval.html)
+
+---
+
+## 🙏 致谢
+
+**特别感谢：**
+
+- **[easy-dataset](https://github.com/ConardLi/easy-dataset)** (13.6k Stars) - Lobster Eye 的 Markdown 分块算法灵感来源于此项目的智能分块技术。感谢 @ConardLi 开源的优秀项目，为我们提供了宝贵的技术参考！
+
+- **[OpenClaw](https://github.com/openclaw/openclaw)** - 龙虾眼基于 OpenClaw 构建，感谢 OpenClaw 团队提供的强大记忆系统框架！
 
 ---
 
