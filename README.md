@@ -599,7 +599,7 @@ memory/main.sqlite
 - [Ollama](https://ollama.com)
 - [Qwen3 Embedding](https://ollama.com/library/qwen3-embedding)
 - [SQLite FTS5](https://www.sqlite.org/fts5.html)
-- [MMR 论文](https://www.cs.cmu.edu/~jgc/publication/Using_MMR_Diversity_Based_LMs_for_Retrieval.html)
+- [MMR 论文 (Carbonell & Goldstein 1998)](https://www.cs.cmu.edu/~jgc/publication/The_Use_of_MMR_Diversity_Based_LMs_for_Retrieval.html)
 - [Lobster Chunker 源码](https://github.com/henserlu/lobster-eye/tree/main/skills/lobster-chunker)
 
 ---
