@@ -1,0 +1,18 @@
+{
+  "name": "lobster-chunker",
+  "version": "1.0.0",
+  "description": "🦞 Markdown-aware chunking for Lobster Eye memory system",
+  "main": "chunker.js",
+  "scripts": {
+    "test": "node test.js"
+  },
+  "keywords": [
+    "markdown",
+    "chunking",
+    "rag",
+    "openclaw",
+    "lobster-eye"
+  ],
+  "author": "henserlu",
+  "license": "MIT"
+}
