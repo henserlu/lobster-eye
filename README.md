@@ -48,51 +48,163 @@ OpenClaw 原生记忆系统存在以下效率问题：
 
 ## 🛠️ 技术架构
 
+### 整体流程图
+
 ```
-用户查询 → Ollama 嵌入 (Qwen3-0.6B) → 混合检索 (向量 70% + BM25 30%) 
-    → 时间衰减 (30 天半衰期) → MMR 去重 → 返回结果
+┌─────────────────────────────────────────────────────────┐
+│                    用户查询                              │
+│              "质谱仪配置" 或 "mass spec"                 │
+└────────────────────────────┬────────────────────────────┘
+                             ↓
+┌─────────────────────────────────────────────────────────┐
+│  1️⃣ 嵌入生成 (Embedding)                                │
+│     Ollama: qwen3-embedding:0.6b (1024 维)                │
+│     本地运行，无需联网                                   │
+└────────────────────────────┬────────────────────────────┘
+                             ↓
+┌─────────────────────────────────────────────────────────┐
+│  2️⃣ 混合检索 (Hybrid Search)                             │
+│     向量搜索 (70%) + BM25 全文搜索 (30%)                  │
+│     兼顾语义理解和精确词匹配                             │
+└────────────────────────────┬────────────────────────────┘
+                             ↓
+┌─────────────────────────────────────────────────────────┐
+│  3️⃣ 时间衰减 (Temporal Decay)                           │
+│     30 天半衰期，新记忆优先                               │
+│     旧记忆不完全丢弃，只是权重降低                       │
+└────────────────────────────┬────────────────────────────┘
+                             ↓
+┌─────────────────────────────────────────────────────────┐
+│  4️⃣ MMR 去重 (Maximal Marginal Relevance)               │
+│     平衡相关性和多样性                                   │
+│     避免返回 5 条相似内容                                 │
+└────────────────────────────┬────────────────────────────┘
+                             ↓
+┌─────────────────────────────────────────────────────────┐
+│  5️⃣ 返回 Top-K 结果                                      │
+│     内容 + 来源文件 + 行号 + 相关性分数                   │
+└─────────────────────────────────────────────────────────┘
 ```
 
-**核心组件：**
-- **嵌入模型**: Qwen3-0.6B (1024 维，0.6GB)
-- **推理引擎**: Ollama (本地运行)
-- **向量存储**: SQLite + sqlite-vec
-- **全文索引**: FTS5
+### Agent 架构
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                    OpenClaw Gateway                      │
+│                                                          │
+│  ┌────────────────────────────────────────────────────┐ │
+│  │              memorySearch Plugin                    │ │
+│  │  ┌──────────────┐  ┌──────────────┐  ┌──────────┐ │ │
+│  │  │   Embedding  │  │   Hybrid     │  │   MMR    │ │ │
+│  │  │   Provider   │→ │   Retriever  │→ │  Rerank  │ │ │
+│  │  │  (Ollama)    │  │  (Vector+FTS)│  │          │ │ │
+│  │  └──────────────┘  └──────────────┘  └──────────┘ │ │
+│  └────────────────────────────────────────────────────┘ │
+│                          ↓                               │
+│  ┌────────────────────────────────────────────────────┐ │
+│  │              SQLite Database                        │ │
+│  │  - chunks 表 (文本 + 向量+ 来源)                     │ │
+│  │  - FTS 虚拟表 (全文索引)                             │ │
+│  │  - cache 表 (嵌入缓存)                               │ │
+│  └────────────────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────────────┘
+```
+
+### 核心组件
+
+| 组件 | 技术选型 | 说明 |
+|------|----------|------|
+| **嵌入模型** | Qwen3-0.6B | 1024 维，跨语言强，0.6GB |
+| **推理引擎** | Ollama | 本地运行，无需 API key |
+| **向量存储** | SQLite + sqlite-vec | 轻量，嵌入式 |
+| **全文索引** | FTS5 | SQLite 内置全文搜索 |
+| **缓存** | SQLite | 避免重复嵌入 |
+| **Plugin** | memorySearch | OpenClaw 内置插件 |
 
 ---
 
-## 📋 快速开始
+## 📋 详细构建步骤
 
-### 1. 下载模型
+### 环境准备
+
+**前置要求：**
+- OpenClaw Gateway (已安装)
+- Ollama (已安装并运行)
+- 至少 1GB 磁盘空间
+
+**检查状态：**
+```bash
+# 检查 Ollama 是否运行
+ollama list
+
+# 检查 OpenClaw 状态
+openclaw status
+```
+
+---
+
+### 步骤 1: 下载 Embedding 模型
 
 ```bash
 ollama pull qwen3-embedding:0.6b
 ```
 
-### 2. 配置 OpenClaw
+**模型信息：**
+- 大小：0.6GB
+- 维度：1024
+- 语言：支持中英文
+- 下载时间：~2-5 分钟 (取决于网速)
 
-编辑 `~/.openclaw/openclaw.json`：
+**验证下载：**
+```bash
+ollama list | grep qwen3-embedding
+# 输出示例：
+# qwen3-embedding:0.6b    637d89816321    631 MB
+```
 
+---
+
+### 步骤 2: 配置 OpenClaw
+
+**编辑配置文件：**
+```bash
+nano ~/.openclaw/openclaw.json
+# 或
+code ~/.openclaw/openclaw.json
+```
+
+**添加 memorySearch 配置：**
 ```json5
 {
   "agents": {
     "defaults": {
       "memorySearch": {
-        "enabled": true,
-        "provider": "ollama",
-        "model": "qwen3-embedding:0.6b",
+        "enabled": true,                    // 启用记忆搜索
+        "provider": "ollama",               // 使用 Ollama 本地嵌入
+        "model": "qwen3-embedding:0.6b",    // 模型名称
         "remote": {
-          "baseUrl": "http://localhost:11434",
-          "apiKey": "ollama-local"
+          "baseUrl": "http://localhost:11434",  // Ollama API 地址
+          "apiKey": "ollama-local"              // 占位符，Ollama 不需要真实 key
         },
         "query": {
           "hybrid": {
-            "enabled": true,
-            "vectorWeight": 0.7,
-            "textWeight": 0.3,
-            "mmr": { "enabled": true, "lambda": 0.7 },
-            "temporalDecay": { "enabled": true, "halfLifeDays": 30 }
+            "enabled": true,                // 启用混合搜索
+            "vectorWeight": 0.7,            // 向量权重 70%
+            "textWeight": 0.3,              // BM25 权重 30%
+            "candidateMultiplier": 4,       // 候选池倍数
+            "mmr": {
+              "enabled": true,              // 启用 MMR 去重
+              "lambda": 0.7                 // 平衡相关性和多样性
+            },
+            "temporalDecay": {
+              "enabled": true,              // 启用时间衰减
+              "halfLifeDays": 30            // 30 天半衰期
+            }
           }
+        },
+        "cache": {
+          "enabled": true,                  // 启用嵌入缓存
+          "maxEntries": 50000               // 最大缓存条目
         }
       }
     }
@@ -100,10 +212,104 @@ ollama pull qwen3-embedding:0.6b
 }
 ```
 
-### 3. 重启
+**配置说明：**
+- `vectorWeight: 0.7` - 语义匹配优先
+- `textWeight: 0.3` - 关键词匹配辅助
+- `halfLifeDays: 30` - 新记忆优先，旧记忆不完全丢弃
+- `lambda: 0.7` - 平衡相关性和多样性 (0=最大多样性，1=最大相关性)
+
+---
+
+### 步骤 3: 重启 Gateway
 
 ```bash
 openclaw gateway restart
+```
+
+**等待 ~10 秒** 让 Gateway 完全启动。
+
+---
+
+### 步骤 4: 验证配置
+
+**检查记忆状态：**
+```bash
+openclaw memory status
+```
+
+**预期输出：**
+```
+Memory Search (main)
+Provider: ollama (requested: ollama)
+Model: qwen3-embedding:0.6b
+Sources: memory
+Indexed: X/X files · X chunks
+Dirty: no
+Store: ~/.openclaw/memory/main.sqlite
+Workspace: ~/.openclaw/workspace
+Vector: ready
+Vector dims: 1024
+FTS: ready
+Embedding cache: enabled (X entries)
+```
+
+**关键指标：**
+- ✅ `Provider: ollama` - 使用 Ollama
+- ✅ `Model: qwen3-embedding:0.6b` - 模型正确
+- ✅ `Vector: ready` - 向量搜索就绪
+- ✅ `FTS: ready` - 全文搜索就绪
+- ✅ `Dirty: no` - 索引已同步
+
+---
+
+### 步骤 5: 测试搜索
+
+**测试语义搜索：**
+```bash
+openclaw memory search "RAG 方案"
+```
+
+**测试跨语言搜索：**
+```bash
+openclaw memory search "mass spec configuration"
+```
+
+**预期结果：**
+- 返回相关记忆片段
+- 显示相关性分数 (0.5-0.8 为良好)
+- 显示来源文件和行号
+
+---
+
+### 故障排查
+
+**问题 1: Gateway 启动失败**
+```bash
+# 检查配置语法
+openclaw doctor
+
+# 查看详细日志
+journalctl --user -u openclaw-gateway -f
+```
+
+**问题 2: Ollama 无法连接**
+```bash
+# 检查 Ollama 是否运行
+ollama list
+
+# 重启 Ollama
+ollama serve
+```
+
+**问题 3: 搜索无结果**
+```bash
+# 检查索引状态
+openclaw memory status
+
+# 如果 Indexed: 0，等待自动索引或添加记忆文件
+echo "# 测试记忆" >> ~/.openclaw/workspace/memory/test.md
+sleep 30  # 等待自动索引
+openclaw memory search "测试"
 ```
 
 ---
