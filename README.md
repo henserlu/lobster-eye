@@ -137,6 +137,8 @@ OpenClaw 原生记忆系统存在以下效率问题：
 
 ## 🧩 Lobster Chunker - Markdown 结构感知分块
 
+> **原创实现** - Lobster Chunker 是龙虾眼团队**自主实现**的 Markdown 分块算法，**灵感来源于** [easy-dataset](https://github.com/ConardLi/easy-dataset) 项目的智能分块理念，但代码完全独立编写，针对 OpenClaw 记忆系统优化。
+
 ### 分块算法流程图
 
 ```
@@ -610,7 +612,7 @@ memory/main.sqlite
 
 - **[Qwen Team](https://github.com/QwenLM)** - 感谢阿里云 Qwen 团队开发的 **Qwen3-Embedding** 模型！出色的跨语言能力和高效的性能（0.6B 模型，1024 维，中英 0.607+ 相关性）是 Lobster Eye 的核心基础。没有这个优秀的开源模型，龙虾眼的跨语言搜索能力无法实现！
 
-- **[easy-dataset](https://github.com/ConardLi/easy-dataset)** (13.6k Stars) - Lobster Eye 的 Markdown 分块算法灵感来源于此项目的智能分块技术。感谢 @ConardLi 开源的优秀项目，为我们提供了宝贵的技术参考！
+- **[easy-dataset](https://github.com/ConardLi/easy-dataset)** (13.6k Stars) - Lobster Chunker 的**设计灵感**来源于此项目的智能分块理念。⚠️ **声明**: Lobster Chunker 是我们**自主实现**的代码（位于 `skills/lobster-chunker/chunker.js`），不是直接复制 easy-dataset 的源码。我们借鉴了其"按标题层级分割"和"智能合并小段落"的核心思想，针对 OpenClaw 记忆系统重新实现和优化。感谢 @ConardLi 开源的优秀项目！
 
 - **[OpenClaw](https://github.com/openclaw/openclaw)** - 龙虾眼基于 OpenClaw 构建，感谢 OpenClaw 团队提供的强大记忆系统框架！
 
