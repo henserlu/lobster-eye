@@ -601,7 +601,9 @@ memory/main.sqlite
 - [Ollama](https://ollama.com)
 - [Qwen3 Embedding](https://ollama.com/library/qwen3-embedding)
 - [SQLite FTS5](https://www.sqlite.org/fts5.html)
-- [MMR 论文 (Carbonell & Goldstein 1998)](https://www.semanticscholar.org/paper/The-Use-of-MMR-Diversity-Based-LMs-for-Retrieval-Carbonell-Goldstein/40846180e2e645e0294a6d19b78a0c67b7310e3a) - Semantic Scholar
+- [MMR 论文 (Carbonell & Goldstein 1998)](https://dl.acm.org/doi/10.1145/290941.291008) - ACM Digital Library (DOI: 10.1145/290941.291008)
+  - 备用链接：[Semantic Scholar](https://www.semanticscholar.org/paper/40846180e2e645e0294a6d19b78a0c67b7310e3a)
+  - 备用链接：[CiteSeerX](https://citeseerx.ist.psu.edu/document?repid=rep1&type=pdf&doi=26a25a7725c92e507a9a74930f8b5e5e95a99f0e)
 - [Lobster Chunker 源码](https://github.com/henserlu/lobster-eye/tree/main/skills/lobster-chunker)
 
 ---
