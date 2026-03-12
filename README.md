@@ -608,9 +608,13 @@ memory/main.sqlite
 
 **特别感谢：**
 
+- **[Qwen Team](https://github.com/QwenLM)** - 感谢阿里云 Qwen 团队开发的 **Qwen3-Embedding** 模型！出色的跨语言能力和高效的性能（0.6B 模型，1024 维，中英 0.607+ 相关性）是 Lobster Eye 的核心基础。没有这个优秀的开源模型，龙虾眼的跨语言搜索能力无法实现！
+
 - **[easy-dataset](https://github.com/ConardLi/easy-dataset)** (13.6k Stars) - Lobster Eye 的 Markdown 分块算法灵感来源于此项目的智能分块技术。感谢 @ConardLi 开源的优秀项目，为我们提供了宝贵的技术参考！
 
 - **[OpenClaw](https://github.com/openclaw/openclaw)** - 龙虾眼基于 OpenClaw 构建，感谢 OpenClaw 团队提供的强大记忆系统框架！
+
+- **[Ollama](https://github.com/ollama/ollama)** - 感谢 Ollama 团队提供的本地推理引擎，让 Qwen3-Embedding 能够 100% 本地运行，确保数据隐私！
 
 ---
 
