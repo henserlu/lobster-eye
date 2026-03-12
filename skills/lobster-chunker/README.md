@@ -4,9 +4,14 @@
 
 ---
 
-## 📖 灵感来源
+## 📖 来源说明
 
-基于 [easy-dataset](https://github.com/ConardLi/easy-dataset) (13.6k Stars) 的 Markdown 分块算法，为 OpenClaw 龙虾眼记忆系统优化。
+**基于 [easy-dataset](https://github.com/ConardLi/easy-dataset) (13.6k Stars) 的 Markdown 分块算法改写**，针对 OpenClaw 龙虾眼记忆系统简化和优化。
+
+**改写内容：**
+- 简化了原有的复杂逻辑
+- 适配 OpenClaw 的 memorySearch 接口
+- 保持了核心的"按标题层级分割"和"智能合并小段落"算法
 
 ---
 

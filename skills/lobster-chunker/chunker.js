@@ -1,7 +1,8 @@
 /**
  * 🦞 Lobster Chunker - Markdown 结构感知分块器
  * 
- * 基于 easy-dataset 的灵感，为龙虾眼优化的分块算法
+ * 基于 easy-dataset (https://github.com/ConardLi/easy-dataset) 的分块算法改写
+ * 针对 OpenClaw 龙虾眼记忆系统简化和优化
  * 
  * 特性：
  * 1. 按标题层级分割（保持文档结构）
