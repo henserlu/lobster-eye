@@ -660,3 +660,91 @@ MIT License
 
 **最后更新**: 2026-03-13  
 **维护者**: @henserlu
+
+---
+
+## ⚡ Ollama 性能优化
+
+### 问题背景
+
+**默认配置下 Ollama embedding 响应慢：**
+- 首次请求：~4 秒 (模型从磁盘加载)
+- 5 分钟后：~4 秒 (模型自动卸载)
+
+**原因：** Ollama 默认 `keep_alive=5m`，空闲 5 分钟后卸载模型。
+
+### 解决方案：设置永久保持
+
+**方法 1: WSL 启动脚本 (推荐)**
+
+在 `~/.bashrc` 或 `~/.zshrc` 中添加：
+
+```bash
+# 🦞 Lobster Eye: Keep Ollama model loaded permanently
+curl -s -X POST http://localhost:11434/api/embeddings \
+  -d '{"model": "qwen3-embedding:0.6b", "prompt": "warmup", "keep_alive": -1}' > /dev/null 2>&1 &
+```
+
+**效果：**
+- ✅ 每次 WSL 启动自动设置
+- ✅ 模型永久保持加载 (`keep_alive=-1`)
+- ✅ 响应时间从 4 秒 → 0.2 秒 (20 倍提升)
+
+**方法 2: Windows 环境变量 (完全解决)**
+
+在 Windows 上设置用户环境变量：
+
+1. 打开"系统属性" → "高级" → "环境变量"
+2. 用户变量 → 新建
+   - 变量名：`OLLAMA_KEEP_ALIVE`
+   - 变量值：`-1`
+3. 重启 Ollama 服务
+
+**效果：**
+- ✅ 全局生效
+- ✅ Windows 重启后依然有效
+- ✅ 无需每次设置
+
+### 验证模型加载状态
+
+**检查模型是否加载：**
+```bash
+curl -s http://localhost:11434/api/ps | python3 -m json.tool
+```
+
+**预期输出：**
+```json
+{
+  "models": [
+    {
+      "name": "qwen3-embedding:0.6b",
+      "expires_at": "2318-06-23T16:17:11.046888907+08:00",  ← 约 100 年后
+      "size_vram": 6283637824
+    }
+  ]
+}
+```
+
+**关键指标：**
+- `expires_at`: 2318 年 (表示 `keep_alive=-1` 生效)
+- `size_vram`: 6.28GB (模型在显存中)
+
+### 性能对比
+
+| 场景 | 优化前 | 优化后 | 提升 |
+|------|--------|--------|------|
+| **首次请求** | ~4 秒 | ~0.2 秒 | ⚡ 20 倍 |
+| **5 分钟后** | ~4 秒 (重新加载) | ~0.2 秒 | ⚡ 20 倍 |
+| **WSL 重启后** | ~4 秒 | ~0.2 秒 (自动设置) | ⚡ 20 倍 |
+| **Windows 重启后** | ~4 秒 | ~4 秒 (首次) → ~0.2 秒 | ⚡ 需要设置 |
+
+### 注意事项
+
+**内存占用：**
+- 模型永久加载占用 ~6GB VRAM
+- 如果显存紧张，可改为 `keep_alive=24h`
+
+**Windows 重启后：**
+- 如果未设置环境变量，首次请求仍会慢
+- 建议设置 `OLLAMA_KEEP_ALIVE=-1` 永久解决
+
