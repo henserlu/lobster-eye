@@ -569,6 +569,25 @@ gpg -c backup.tar.gz  # 对称加密
 
 **系统会主动提醒你！** 当检测到记忆文件增长到一定程度时，会通过 Heartbeat 或通知提醒你备份。
 
+---
+
+## 🦞 Proactive 检查机制
+
+**简化版 Heartbeat 检查：**
+- ✅ WAL 违反检查 (每次 Heartbeat)
+- ✅ 敏感数据保护 (每次 Heartbeat)
+- ✅ Memory Maintenance (按需)
+
+**设计原则：**
+- 轻量快速 (避免超时)
+- 与龙虾眼不冲突 (不干预记忆索引)
+- 只在 Heartbeat 时检查 (无需额外 Cron)
+
+**已移除：**
+- ❌ 每日 Cron 检查 (容易超时)
+- ❌ 复杂自检清单 (过于繁琐)
+- ❌ 独立 Cron 会话 (避免会话积累)
+
 ### .gitignore 配置
 
 ```gitignore
