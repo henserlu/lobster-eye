@@ -530,7 +530,15 @@ git push  # 敏感数据泄露！
 
 #### ✅ 正确做法
 
-**方案 1: 本地加密备份**
+**方案 1: 简单备份 (推荐)**
+```bash
+# 手动备份 (每月一次，10 秒搞定)
+tar -czf memory-backup-$(date +%Y%m%d).tar.gz ~/.openclaw/workspace/memory/
+gpg -c memory-backup-$(date +%Y%m%d).tar.gz  # 对称加密
+rm memory-backup-$(date +%Y%m%d).tar.gz
+```
+
+**方案 2: 本地加密备份 (高级)**
 ```bash
 restic backup \
   --repo ~/backups/openclaw-memory/restic \
@@ -538,11 +546,26 @@ restic backup \
   ~/.openclaw/workspace/memory/
 ```
 
-**方案 2: 离线备份**
+**方案 3: 离线备份**
 ```bash
 tar -czf backup.tar.gz ~/.openclaw/workspace/memory/
 gpg -c backup.tar.gz  # 对称加密
+# 将 .gpg 文件复制到外部硬盘
 ```
+
+#### 📅 何时需要备份？
+
+**当前建议：手动备份 (每月一次)**
+- ✅ 记忆文件 <50 个
+- ✅ 备份耗时 <10 秒
+- ✅ 数据量 <10MB
+
+**需要自动备份时：**
+- 📈 记忆文件 >50 个
+- 📈 手动备份 >5 分钟
+- 📈 经常忘记备份
+
+**系统会主动提醒你！** 当检测到记忆文件增长到一定程度时，会通过 Heartbeat 或通知提醒你备份。
 
 ### .gitignore 配置
 
