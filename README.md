@@ -1,8 +1,8 @@
 # 🦞👁️ Lobster Eye (龙虾眼)
 
-> OpenClaw 记忆系统的本地化增强方案 - 隐私优先，数据不出本地
+> OpenClaw 记忆系统的本地化增强方案
 
-**基于 OpenClaw 原生记忆系统 + Lobster Chunker + Ollama 本地 Embedding**
+**核心贡献：数据安全 + 智能分块**
 
 **运行环境：** WSL2 + OpenClaw + Ollama
 
@@ -12,94 +12,131 @@
 
 **Lobster Eye = OpenClaw 原生记忆系统 + 本地化增强**
 
-| 组件 | 来源 | 说明 |
-|------|------|------|
-| **Embedding 搜索** | OpenClaw 原生 | SQLite + sqlite-vec |
-| **混合检索** | OpenClaw 原生 | 向量 + BM25 |
-| **时间衰减** | OpenClaw 原生 | 30 天半衰期 |
-| **MMR 去重** | OpenClaw 原生 | 多样性平衡 |
-| **Lobster Chunker** | 🆕 龙虾眼 | Markdown 结构感知分块 |
-| **Ollama 本地化** | 🆕 龙虾眼 | 隐私优先 + 性能优化 |
+OpenClaw 原生记忆系统功能完整，龙虾眼提供两种增强：
+
+| 增强项 | OpenClaw 默认 | 龙虾眼方案 | 价值 |
+|--------|-------------|------------|------|
+| **Embedding Provider** | 云端 API (OpenAI/Gemini 等) | **本地 Ollama** | 数据不出本地 |
+| **分块算法** | 固定长度 | **Markdown 感知** | 保持文档结构 |
+
+**其他功能 (混合检索/时间衰减/MMR 去重/SQLite 存储) 均使用 OpenClaw 原生。**
 
 ---
 
-## 📖 灵感来源
+## 🛡️ 数据安全
 
-龙虾的复眼由数千个小眼面组成，每个独立感光，组合成 360° 全景视野。
+### 为什么选择本地 Embedding？
 
-**我们的记忆系统借鉴了这个理念：**
-- 多个记忆分块 → 数千个小眼面
-- 语义 + 关键词双维度 → 360° 全景搜索
-- 每个 chunk 独立嵌入 → 独立感光
-- 混合检索融合 → 组合成像
+**云端 API 的顾虑：**
+- ❌ 记忆内容发送到第三方服务器
+- ❌ 可能包含敏感信息 (会议记录/API 密钥/个人笔记)
+- ❌ 依赖网络连接
 
----
+**龙虾眼方案：**
+- ✅ Ollama 本地运行
+- ✅ 数据不出 WSL2
+- ✅ 无需网络
 
-## 🎯 期望解决的问题
+### Ollama 配置
 
-### OpenClaw 原生记忆系统的痛点
+**步骤 1: 下载模型**
+```bash
+ollama pull qwen3-embedding:0.6b
+```
 
-| 痛点 | 表现 | 后果 |
-|------|------|------|
-| **搜索慢** | 全文扫描，无索引 | 大量记忆时查询超时 |
-| **无语义理解** | 必须精确匹配关键词 | 找不到语义相同但措辞不同的内容 |
-| **跨语言不行** | 中文搜不到英文 | 多语言用户效率极低 |
-| **无时间感知** | 旧内容与新内容同等权重 | 近期重要信息被淹没 |
-| **结果重复** | 返回多条相似内容 | 浪费注意力 |
+**步骤 2: 配置 OpenClaw**
 
-### 常见使用场景
+编辑 `~/.openclaw/openclaw.json`：
+```json5
+{
+  "agents": {
+    "defaults": {
+      "memorySearch": {
+        "enabled": true,
+        "provider": "ollama",
+        "model": "qwen3-embedding:0.6b",
+        "remote": {
+          "baseUrl": "http://localhost:11434",
+          "apiKey": "ollama-local"
+        }
+      }
+    }
+  }
+}
+```
 
-**你是否有过这样的经历：**
-
-❌ 记得写过"项目会议记录"，但搜"开会"找不到  
-❌ 记得存过"API 密钥"，但搜"password"找不到  
-❌ 记得昨天写的笔记，但被几个月前的旧内容淹没  
-❌ 搜"周报"返回 5 条几乎相同的内容  
-
-**Lobster Eye 就是为了解决这些问题！**
-
----
-
-## 🛠️ 技术架构
-
-**龙虾眼使用 OpenClaw 原生记忆系统架构，仅在以下方面增强：**
-
-1. **Embedding Provider**: Ollama 本地模型 (vs 云端 API)
-2. **Lobster Chunker**: Markdown 结构感知分块 (vs 固定长度)
-3. **性能优化**: keep_alive 永久加载 (vs 默认 5 分钟)
-
-**其他组件 (混合检索/时间衰减/MMR 去重) 均为 OpenClaw 原生功能。**
-
----
-
-## ⚡ Ollama 本地化优化
-
-**OpenClaw 原生支持 Ollama Embedding，龙虾眼补充性能优化方案：**
-
-### 方案 1: WSL2 端设置 (推荐)
+**步骤 3: 性能优化**
 
 在 `~/.bashrc` 中添加：
 ```bash
+# 永久保持模型加载 (响应时间 4 秒 → 0.2 秒)
 curl -s -X POST http://localhost:11434/api/embeddings \
   -d '{"model": "qwen3-embedding:0.6b", "prompt": "warmup", "keep_alive": -1}' > /dev/null &
 ```
 
-### 方案 2: Windows 端设置 (完全解决)
+---
 
-Windows 环境变量：`OLLAMA_KEEP_ALIVE=-1`
+## 🧩 Lobster Chunker - Markdown 结构感知分块
 
-**效果：** 响应时间从 4 秒 → 0.2 秒 (20 倍提升)
+### 为什么需要智能分块？
+
+**固定长度分块的问题：**
+```
+# 会议记录
+
+## 上午工作
+
+讨论了这个项目的进度...[被切断]
+
+## 下午工作
+
+[从中间开始] 继续讨论...
+```
+
+**Lobster Chunker 的做法：**
+```
+Chunk 1: # 会议记录 + ## 上午工作 (完整)
+Chunk 2: ## 下午工作 (完整)
+```
+
+### 分块算法
+
+```
+Markdown 输入
+    ↓
+1️⃣ 解析大纲 (提取标题层级)
+    ↓
+2️⃣ 按标题分割 (保持结构完整)
+    ↓
+3️⃣ 处理段落
+   ├─ 合并小段落 (<1500 字)
+   └─ 分割超长段落 (>2000 字)
+    ↓
+4️⃣ 输出分块数组
+```
+
+**性能：** ~1ms / 10000 字符
+
+### 使用 Lobster Chunker
+
+```javascript
+const { chunkMarkdown } = require('./skills/lobster-chunker/chunker.js');
+
+const chunks = chunkMarkdown(markdown, {
+  minLength: 1500,
+  maxLength: 2000
+});
+```
 
 ---
 
-## 📋 详细构建步骤
+## 📋 完整配置步骤
 
 ### 环境准备
 
-**前置要求：**
-- OpenClaw Gateway (WSL2)
+- WSL2 (运行 OpenClaw)
 - Ollama (Windows 或 WSL2)
-- 至少 1GB 磁盘空间
+- OpenClaw Gateway
 
 ### 步骤 1: 下载 Embedding 模型
 
@@ -110,7 +147,6 @@ ollama pull qwen3-embedding:0.6b
 ### 步骤 2: 配置 OpenClaw
 
 编辑 `~/.openclaw/openclaw.json`：
-
 ```json5
 {
   "agents": {
@@ -146,64 +182,59 @@ ollama pull qwen3-embedding:0.6b
 openclaw gateway restart
 ```
 
+### 步骤 4: 验证
+
+```bash
+openclaw memory status
+```
+
 ---
 
-## 🧪 测试结果
+## 📊 效果对比
 
-### 跨语言搜索测试
+### 数据安全
 
-| 查询 | 语言 | 相关性 | 说明 |
-|------|------|--------|------|
-| "项目会议" | 中文 | 0.599 | 中文记忆 |
-| "meeting notes" | 英文 | 0.607 | 跨语言匹配 |
-| "weekly report" | 英文 | 0.584 | 跨语言匹配 |
+| 方案 | 数据流向 | 隐私风险 |
+|------|----------|----------|
+| 云端 API | 本地 → 第三方服务器 | ⚠️ 中 |
+| 龙虾眼 | 本地 → 本地 | ✅ 无 |
 
-### 性能测试
+### 分块质量
+
+| 场景 | 固定长度 | Lobster Chunker |
+|------|----------|-----------------|
+| 有标题文档 | 切断标题 | ✅ 保持结构 |
+| 短段落 | 碎片化 | ✅ 智能合并 |
+| 超长段落 | 硬切断 | ✅ 递归分割 |
+
+### 性能
 
 | 操作 | 耗时 |
 |------|------|
 | Ollama Embedding (优化后) | ~0.2 秒 |
-| 向量搜索 | ~50ms |
-| BM25 搜索 | ~20ms |
-| **总计** | **~0.3 秒** |
+| Lobster Chunker | ~1ms/10k 字符 |
+| 记忆搜索 | ~0.3 秒 |
 
 ---
 
 ## 🔒 备份策略
 
-**使用 OpenClaw 官方备份命令：**
+使用 OpenClaw 官方备份命令：
 
 ```bash
 # 创建备份并验证
 openclaw backup create --verify
-
-# 只备份配置 (不含工作区)
-openclaw backup create --only-config
 ```
 
 **注意：** 记忆文件包含敏感信息，不建议推送到 Git！
 
 ---
 
-## 📊 与其他方案对比
-
-| 特性 | Lobster Eye | 传统 RAG | 云端方案 |
-|------|-------------|----------|----------|
-| **本地运行** | ✅ | ⚠️ | ❌ |
-| **跨语言** | ✅ | ⚠️ | ✅ |
-| **时间衰减** | ✅ | ❌ | ❌ |
-| **去重** | ✅ | ❌ | ❌ |
-| **隐私保护** | ✅ | ✅ | ❌ |
-| **成本** | 免费 | 免费 | 按量付费 |
-
----
-
 ## 📚 参考资料
 
-- [OpenClaw 文档](https://docs.openclaw.ai/concepts/memory)
+- [OpenClaw 记忆系统文档](https://docs.openclaw.ai/concepts/memory)
 - [Ollama](https://ollama.com)
 - [Qwen3 Embedding](https://ollama.com/library/qwen3-embedding)
-- [SQLite FTS5](https://www.sqlite.org/fts5.html)
 
 ---
 
