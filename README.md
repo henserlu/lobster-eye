@@ -17,7 +17,6 @@
 - 混合检索融合 → 组合成像
 
 ---
-
 ## 🎯 解决 OpenClaw 长久记忆的痛点
 
 ### 问题背景
@@ -57,7 +56,6 @@ OpenClaw 原生记忆系统存在以下效率问题：
 | 首次查询慢 | 缓存复用，二次查询 100ms | ✅ 速度提升 10 倍 |
 
 ---
-
 ## 🛠️ 技术架构
 
 ### 整体流程图
@@ -136,7 +134,6 @@ OpenClaw 原生记忆系统存在以下效率问题：
 | **Plugin** | memorySearch | OpenClaw 内置插件 |
 
 ---
-
 ## 🧩 Lobster Chunker - Markdown 结构感知分块
 
 > **原创实现** - Lobster Chunker 是龙虾眼团队**自主实现**的 Markdown 分块算法，**灵感来源于** [easy-dataset](https://github.com/ConardLi/easy-dataset) 项目的智能分块理念，但代码完全独立编写，针对 OpenClaw 记忆系统优化。
@@ -182,86 +179,90 @@ OpenClaw 原生记忆系统存在以下效率问题：
 **输入 Markdown：**
 ```markdown
 # 2026-03-13 会议记录
+## ⚡ Ollama 性能优化
 
-## 上午工作
+### 问题背景
 
-### 龙虾眼分块算法
-研究了 easy-dataset 项目的分块技术。
+**默认配置下 Ollama embedding 响应慢：**
+- 首次请求：~4 秒 (模型从磁盘加载)
+- 5 分钟后：~4 秒 (模型自动卸载)
 
-### 代码实现
-创建了 chunker.js 文件。
+**原因：** Ollama 默认 `keep_alive=5m`，空闲 5 分钟后卸载模型。
 
-## 下午工作
+### 解决方案：设置永久保持
 
-### 测试
-测试不同场景的分块效果。
+**方法 1: WSL 启动脚本 (推荐)**
+
+在 `~/.bashrc` 或 `~/.zshrc` 中添加：
+
+```bash
+# 🦞 Lobster Eye: Keep Ollama model loaded permanently
+curl -s -X POST http://localhost:11434/api/embeddings \
+  -d '{"model": "qwen3-embedding:0.6b", "prompt": "warmup", "keep_alive": -1}' > /dev/null 2>&1 &
 ```
 
-**输出分块 (minLength=500, maxLength=1500)：**
-```
-Chunk 1:
-  标题：2026-03-13 会议记录
-  层级：#
-  内容：# 2026-03-13 会议记录 \n\n ## 上午工作 \n\n ### 龙虾眼分块算法...
-  长度：~400 字符
+**效果：**
+- ✅ 每次 WSL 启动自动设置
+- ✅ 模型永久保持加载 (`keep_alive=-1`)
+- ✅ 响应时间从 4 秒 → 0.2 秒 (20 倍提升)
 
-Chunk 2:
-  标题：下午工作
-  层级：##
-  内容：## 下午工作 \n\n ### 测试 \n\n 测试不同场景...
-  长度：~200 字符
+**方法 2: Windows 环境变量 (完全解决)**
 
-→ 自动合并 (因为<500 字符)
-```
+在 Windows 上设置用户环境变量：
 
-### 分块策略对比
+1. 打开"系统属性" → "高级" → "环境变量"
+2. 用户变量 → 新建
+   - 变量名：`OLLAMA_KEEP_ALIVE`
+   - 变量值：`-1`
+3. 重启 Ollama 服务
 
-| 场景 | 传统分块 | Lobster Chunker |
-|------|----------|-----------------|
-| **有标题文档** | 按固定长度切断 | ✅ 按标题层级分割 |
-| **短段落** | 碎片化 (多个小块) | ✅ 智能合并 |
-| **超长段落** | 硬切断 (语义断裂) | ✅ 递归分割 (段落>句子>长度) |
-| **混合层级** | 忽略层级 | ✅ 保持#到######结构 |
+**效果：**
+- ✅ 全局生效
+- ✅ Windows 重启后依然有效
+- ✅ 无需每次设置
 
-### 代码示例
+### 验证模型加载状态
 
-```javascript
-const { chunkMarkdown } = require('lobster-chunker');
-
-const markdown = `
-# 标题 1
-内容...
-
-## 标题 2
-更多内容...
-`;
-
-const chunks = chunkMarkdown(markdown, {
-  minLength: 1500,  // 最小 1500 字
-  maxLength: 2000   // 最大 2000 字
-});
-
-// 输出：
-// [
-//   {
-//     heading: "标题 1",
-//     level: 1,
-//     content: "内容...",
-//     chunkIndex: 0,
-//     totalChunks: 2
-//   }
-// ]
+**检查模型是否加载：**
+```bash
+curl -s http://localhost:11434/api/ps | python3 -m json.tool
 ```
 
-### 性能指标
+**预期输出：**
+```json
+{
+  "models": [
+    {
+      "name": "qwen3-embedding:0.6b",
+      "expires_at": "2318-06-23T16:17:11.046888907+08:00",  ← 约 100 年后
+      "size_vram": 6283637824
+    }
+  ]
+}
+```
 
-| 指标 | 数值 |
-|------|------|
-| 处理速度 | ~1ms / 10000 字符 |
-| 内存占用 | <10MB |
-| 依赖 | 无 (纯 JavaScript) |
+**关键指标：**
+- `expires_at`: 2318 年 (表示 `keep_alive=-1` 生效)
+- `size_vram`: 6.28GB (模型在显存中)
 
----
+### 性能对比
+
+| 场景 | 优化前 | 优化后 | 提升 |
+|------|--------|--------|------|
+| **首次请求** | ~4 秒 | ~0.2 秒 | ⚡ 20 倍 |
+| **5 分钟后** | ~4 秒 (重新加载) | ~0.2 秒 | ⚡ 20 倍 |
+| **WSL 重启后** | ~4 秒 | ~0.2 秒 (自动设置) | ⚡ 20 倍 |
+| **Windows 重启后** | ~4 秒 | ~4 秒 (首次) → ~0.2 秒 | ⚡ 需要设置 |
+
+### 注意事项
+
+**内存占用：**
+- 模型永久加载占用 ~6GB VRAM
+- 如果显存紧张，可改为 `keep_alive=24h`
+
+**Windows 重启后：**
+- 如果未设置环境变量，首次请求仍会慢
+- 建议设置 `OLLAMA_KEEP_ALIVE=-1` 永久解决
 
 ## 📋 详细构建步骤
 
@@ -453,7 +454,6 @@ openclaw memory search "测试"
 ```
 
 ---
-
 ## 🧪 测试结果
 
 ### 测试数据集
@@ -507,7 +507,6 @@ openclaw memory search "测试"
 - ✅ **更高效** - 返回结果更精简，减少无关内容
 
 ---
-
 ## 🔒 隐私保护
 
 ### 数据流向
@@ -571,7 +570,6 @@ gpg -c backup.tar.gz  # 对称加密
 
 ---
 
-
 ## 📊 与其他方案对比
 
 | 特性 | Lobster Eye | 传统 RAG | 云端方案 |
@@ -584,7 +582,6 @@ gpg -c backup.tar.gz  # 对称加密
 | **成本** | 免费 | 免费 | 按量付费 |
 
 ---
-
 ## 📚 参考资料
 
 - [OpenClaw 文档](https://docs.openclaw.ai/concepts/memory)
@@ -597,7 +594,6 @@ gpg -c backup.tar.gz  # 对称加密
 - MMR (Maximal Marginal Relevance) 算法由 Carbonell & Goldstein 于 1998 年提出，用于平衡搜索结果的相关性和多样性。
 
 ---
-
 ## 🙏 致谢
 
 **特别感谢：**
@@ -611,7 +607,6 @@ gpg -c backup.tar.gz  # 对称加密
 - **[Ollama](https://github.com/ollama/ollama)** - 感谢 Ollama 团队提供的本地推理引擎，让 Qwen3-Embedding 能够 100% 本地运行，确保数据隐私！
 
 ---
-
 ## 🤝 贡献
 
 欢迎提交 Issue 和 Pull Request！
@@ -630,89 +625,3 @@ MIT License
 **维护者**: @henserlu
 
 ---
-
-## ⚡ Ollama 性能优化
-
-### 问题背景
-
-**默认配置下 Ollama embedding 响应慢：**
-- 首次请求：~4 秒 (模型从磁盘加载)
-- 5 分钟后：~4 秒 (模型自动卸载)
-
-**原因：** Ollama 默认 `keep_alive=5m`，空闲 5 分钟后卸载模型。
-
-### 解决方案：设置永久保持
-
-**方法 1: WSL 启动脚本 (推荐)**
-
-在 `~/.bashrc` 或 `~/.zshrc` 中添加：
-
-```bash
-# 🦞 Lobster Eye: Keep Ollama model loaded permanently
-curl -s -X POST http://localhost:11434/api/embeddings \
-  -d '{"model": "qwen3-embedding:0.6b", "prompt": "warmup", "keep_alive": -1}' > /dev/null 2>&1 &
-```
-
-**效果：**
-- ✅ 每次 WSL 启动自动设置
-- ✅ 模型永久保持加载 (`keep_alive=-1`)
-- ✅ 响应时间从 4 秒 → 0.2 秒 (20 倍提升)
-
-**方法 2: Windows 环境变量 (完全解决)**
-
-在 Windows 上设置用户环境变量：
-
-1. 打开"系统属性" → "高级" → "环境变量"
-2. 用户变量 → 新建
-   - 变量名：`OLLAMA_KEEP_ALIVE`
-   - 变量值：`-1`
-3. 重启 Ollama 服务
-
-**效果：**
-- ✅ 全局生效
-- ✅ Windows 重启后依然有效
-- ✅ 无需每次设置
-
-### 验证模型加载状态
-
-**检查模型是否加载：**
-```bash
-curl -s http://localhost:11434/api/ps | python3 -m json.tool
-```
-
-**预期输出：**
-```json
-{
-  "models": [
-    {
-      "name": "qwen3-embedding:0.6b",
-      "expires_at": "2318-06-23T16:17:11.046888907+08:00",  ← 约 100 年后
-      "size_vram": 6283637824
-    }
-  ]
-}
-```
-
-**关键指标：**
-- `expires_at`: 2318 年 (表示 `keep_alive=-1` 生效)
-- `size_vram`: 6.28GB (模型在显存中)
-
-### 性能对比
-
-| 场景 | 优化前 | 优化后 | 提升 |
-|------|--------|--------|------|
-| **首次请求** | ~4 秒 | ~0.2 秒 | ⚡ 20 倍 |
-| **5 分钟后** | ~4 秒 (重新加载) | ~0.2 秒 | ⚡ 20 倍 |
-| **WSL 重启后** | ~4 秒 | ~0.2 秒 (自动设置) | ⚡ 20 倍 |
-| **Windows 重启后** | ~4 秒 | ~4 秒 (首次) → ~0.2 秒 | ⚡ 需要设置 |
-
-### 注意事项
-
-**内存占用：**
-- 模型永久加载占用 ~6GB VRAM
-- 如果显存紧张，可改为 `keep_alive=24h`
-
-**Windows 重启后：**
-- 如果未设置环境变量，首次请求仍会慢
-- 建议设置 `OLLAMA_KEEP_ALIVE=-1` 永久解决
-
